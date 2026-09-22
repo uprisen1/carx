@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,12 +21,16 @@ export default async function MessagesPage() {
       <h1 className="text-2xl font-bold mb-6">Messages</h1>
       <div className="space-y-2">
         {conversations?.map((c) => (
-          <div key={c.id} className="border rounded-lg p-4 bg-white">
+          <Link
+            key={c.id}
+            href={`/messages/${c.id}`}
+            className="block border rounded-lg p-4 bg-white hover:shadow-sm transition"
+          >
             <p className="font-medium">
               {c.listings?.year} {c.listings?.make} {c.listings?.model}
             </p>
-            {/* A client component would load and stream messages for this conversation here */}
-          </div>
+            <p className="text-sm text-gray-500">Open conversation →</p>
+          </Link>
         ))}
         {!conversations?.length && (
           <p className="text-gray-500 text-sm">No conversations yet.</p>

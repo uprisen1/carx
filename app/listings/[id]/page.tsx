@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import MessageSellerButton from "@/components/MessageSellerButton";
 
 interface Props {
   params: { id: string };
@@ -52,10 +53,7 @@ export default async function ListingDetailPage({ params }: Props) {
 
           <p className="mt-4 text-gray-700">{listing.description}</p>
 
-          {/* Client component would go here to start a conversation via Supabase */}
-          <button className="mt-6 w-full bg-black text-white py-3 rounded-lg">
-            Message seller
-          </button>
+          <MessageSellerButton listingId={listing.id} sellerId={listing.seller_id} />
         </div>
       </div>
     </main>

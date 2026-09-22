@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ImageUploader from "@/components/ImageUploader";
 
 export default function NewListingPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function NewListingPage() {
     description: "",
   });
   const [error, setError] = useState<string | null>(null);
+  const [createdListingId, setCreatedListingId] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,27 +36,51 @@ export default function NewListingPage() {
       return;
     }
 
-    const { error: insertError } = await supabase.from("listings").insert({
-      seller_id: user.id,
-      make: form.make,
-      model: form.model,
-      year: Number(form.year),
-      price: Number(form.price),
-      mileage: form.mileage ? Number(form.mileage) : null,
-      transmission: form.transmission,
-      fuel_type: form.fuel_type,
-      condition: form.condition,
-      location: form.location,
-      description: form.description,
-      status: "pending", // goes to admin approval queue
-    });
+    const { data: inserted, error: insertError } = await supabase
+      .from("listings")
+      .insert({
+        seller_id: user.id,
+        make: form.make,
+        model: form.model,
+        year: Number(form.year),
+        price: Number(form.price),
+        mileage: form.mileage ? Number(form.mileage) : null,
+        transmission: form.transmission,
+        fuel_type: form.fuel_type,
+        condition: form.condition,
+        location: form.location,
+        description: form.description,
+        status: "pending", // goes to admin approval queue
+      })
+      .select()
+      .single();
 
-    if (insertError) {
-      setError(insertError.message);
+    if (insertError || !inserted) {
+      setError(insertError?.message ?? "Could not create listing.");
       return;
     }
 
-    router.push("/dashboard");
+    // Stay on the page so photos can be attached before heading back
+    setCreatedListingId(inserted.id);
+  }
+
+  if (createdListingId) {
+    return (
+      <main className="px-6 py-8 max-w-xl mx-auto">
+        <h1 className="text-2xl font-bold mb-2">Add photos</h1>
+        <p className="text-sm text-gray-500 mb-6">
+          Listing details saved. Add a few photos, then you're done — it'll
+          appear once an admin approves it.
+        </p>
+        <ImageUploader listingId={createdListingId} />
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="mt-6 bg-black text-white px-5 py-2 rounded-lg w-full"
+        >
+          Done
+        </button>
+      </main>
+    );
   }
 
   return (
