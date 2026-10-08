@@ -1,41 +1,60 @@
+import Image from "next/image";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import ListingCard from "@/components/ListingCard";
-import SearchFilters from "@/components/SearchFilters";
+import MessageSellerButton from "@/components/MessageSellerButton";
 
 interface Props {
-  searchParams: {
-    make?: string;
-    minPrice?: string;
-    maxPrice?: string;
-    transmission?: string;
-  };
+  params: { id: string };
 }
 
-export default async function ListingsPage({ searchParams }: Props) {
+export default async function ListingDetailPage({ params }: Props) {
   const supabase = createClient();
 
-  let query = supabase
+  const { data: listing } = await supabase
     .from("listings")
-    .select("*, listing_images(url, sort_order)")
-    .eq("status", "active");
+    .select("*, listing_images(url, sort_order), profiles!listings_seller_id_fkey(full_name, phone)")
+    .eq("id", params.id)
+    .single();
 
-  if (searchParams.make) query = query.ilike("make", `%${searchParams.make}%`);
-  if (searchParams.minPrice) query = query.gte("price", Number(searchParams.minPrice));
-  if (searchParams.maxPrice) query = query.lte("price", Number(searchParams.maxPrice));
-  if (searchParams.transmission) query = query.eq("transmission", searchParams.transmission);
-
-  const { data: listings } = await query.order("created_at", { ascending: false });
+  if (!listing) return notFound();
 
   return (
-    <main className="px-6 py-8">
-      <SearchFilters />
-      <p className="text-sm text-gray-500 my-4">
-        {listings?.length ?? 0} cars found
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {listings?.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
-        ))}
+    <main className="px-6 py-8 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="relative w-full h-72 bg-gray-100 rounded-lg overflow-hidden">
+          <Image
+            src={listing.listing_images?.[0]?.url ?? "/placeholder-car.jpg"}
+            alt={`${listing.make} ${listing.model}`}
+            fill
+            className="object-cover"
+          />
+        </div>
+
+        <div>
+          <h1 className="text-2xl font-bold">
+            {listing.year} {listing.make} {listing.model}
+          </h1>
+          <p className="text-xl font-semibold mt-2">
+            KES {listing.price.toLocaleString()}
+          </p>
+
+          <dl className="grid grid-cols-2 gap-2 mt-4 text-sm">
+            <dt className="text-gray-500">Mileage</dt>
+            <dd>{listing.mileage?.toLocaleString() ?? "N/A"} km</dd>
+            <dt className="text-gray-500">Transmission</dt>
+            <dd className="capitalize">{listing.transmission ?? "N/A"}</dd>
+            <dt className="text-gray-500">Fuel type</dt>
+            <dd className="capitalize">{listing.fuel_type ?? "N/A"}</dd>
+            <dt className="text-gray-500">Condition</dt>
+            <dd className="capitalize">{listing.condition?.replace("_", " ") ?? "N/A"}</dd>
+            <dt className="text-gray-500">Location</dt>
+            <dd>{listing.location ?? "N/A"}</dd>
+          </dl>
+
+          <p className="mt-4 text-gray-700">{listing.description}</p>
+
+          <MessageSellerButton listingId={listing.id} sellerId={listing.seller_id} />
+        </div>
       </div>
     </main>
   );

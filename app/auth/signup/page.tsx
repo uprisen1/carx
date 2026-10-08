@@ -18,6 +18,7 @@ export default function SignupPage() {
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
 
     // The profile row is created by a database trigger using this metadata
     const { data, error: signUpError } = await supabase.auth.signUp({

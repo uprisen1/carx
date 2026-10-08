@@ -18,9 +18,9 @@ export default async function AdminQueuePage() {
 
   if (!profile?.is_admin) redirect("/");
 
-  const { data: pending } = await supabase
+  const { data: pending, error } = await supabase
     .from("listings")
-    .select("*, profiles(full_name, phone)")
+    .select("*, profiles!listings_seller_id_fkey(full_name, phone)")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
@@ -28,7 +28,11 @@ export default async function AdminQueuePage() {
     <main className="px-6 py-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Pending listings</h1>
 
-      {!pending?.length && (
+      {error && (
+        <p className="text-red-600 text-sm mb-4">Could not load listings: {error.message}</p>
+      )}
+
+      {!error && !pending?.length && (
         <p className="text-gray-500 text-sm">Nothing waiting for review.</p>
       )}
 
