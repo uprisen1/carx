@@ -13,14 +13,17 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<Role>("buyer");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
+    // The profile row is created by a database trigger using this metadata
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: { data: { full_name: fullName, role } },
     });
 
     if (signUpError || !data.user) {
@@ -28,15 +31,9 @@ export default function SignupPage() {
       return;
     }
 
-    // Create the matching profile row with the chosen role
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: data.user.id,
-      role,
-      full_name: fullName,
-    });
-
-    if (profileError) {
-      setError(profileError.message);
+    // If email confirmation is on, there's no session until they confirm
+    if (!data.session) {
+      setNotice("Account created. Check your email to confirm, then log in.");
       return;
     }
 
@@ -87,6 +84,7 @@ export default function SignupPage() {
         </div>
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
+        {notice && <p className="text-green-700 text-sm">{notice}</p>}
 
         <button type="submit" className="bg-black text-white px-5 py-2 rounded-lg w-full">
           Sign up
