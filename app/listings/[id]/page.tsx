@@ -12,7 +12,7 @@ export default async function ListingDetailPage({ params }: Props) {
 
   const { data: listing } = await supabase
     .from("listings")
-    .select("*, listing_images(url, sort_order), profiles(full_name, phone)")
+    .select("*, listing_images(url, sort_order), profiles!listings_seller_id_fkey(full_name, phone)")
     .eq("id", params.id)
     .single();
 
