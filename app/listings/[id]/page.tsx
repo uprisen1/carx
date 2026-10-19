@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MessageSellerButton from "@/components/MessageSellerButton";
+import ImageGallery from "@/components/ImageGallery";
 
 interface Props {
   params: { id: string };
@@ -18,17 +18,14 @@ export default async function ListingDetailPage({ params }: Props) {
 
   if (!listing) return notFound();
 
+  const images: string[] = [...(listing.listing_images ?? [])]
+    .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
+    .map((i: { url: string }) => i.url);
+
   return (
     <main className="px-6 py-8 max-w-4xl mx-auto">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="relative w-full h-72 bg-gray-100 rounded-lg overflow-hidden">
-          <Image
-            src={listing.listing_images?.[0]?.url ?? "/placeholder-car.jpg"}
-            alt={`${listing.make} ${listing.model}`}
-            fill
-            className="object-cover"
-          />
-        </div>
+        <ImageGallery images={images} alt={`${listing.make} ${listing.model}`} />
 
         <div>
           <h1 className="text-2xl font-bold">
