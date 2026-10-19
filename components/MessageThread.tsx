@@ -1,15 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Message } from "@/lib/supabase/types";
 
 interface Props {
   conversationId: string;
   currentUserId: string;
+  listing?: {
+    id: string;
+    title: string;
+    price: number | null;
+    imageUrl: string | null;
+  } | null;
 }
 
-export default function MessageThread({ conversationId, currentUserId }: Props) {
+export default function MessageThread({ conversationId, currentUserId, listing }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<Message[]>([]);
   const [body, setBody] = useState("");
@@ -69,7 +76,31 @@ export default function MessageThread({ conversationId, currentUserId }: Props) 
   }
 
   return (
-    <div className="flex flex-col h-96 border rounded-lg bg-white">
+    <div className="flex flex-col h-[32rem] border rounded-lg bg-white overflow-hidden">
+      {listing && (
+        <Link
+          href={`/listings/${listing.id}`}
+          className="flex items-center gap-3 p-3 border-b hover:bg-gray-50"
+        >
+          {listing.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={listing.imageUrl}
+              alt={listing.title}
+              className="h-14 w-20 rounded object-cover"
+            />
+          ) : (
+            <div className="h-14 w-20 rounded bg-gray-100" />
+          )}
+          <div>
+            <p className="font-medium text-sm capitalize">{listing.title}</p>
+            {listing.price != null && (
+              <p className="text-sm text-gray-600">KES {listing.price.toLocaleString()}</p>
+            )}
+          </div>
+          <span className="ml-auto text-xs text-blue-600">View listing →</span>
+        </Link>
+      )}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {messages.map((m) => (
           <div
