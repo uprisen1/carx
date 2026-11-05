@@ -8,6 +8,7 @@ export default function SearchFilters() {
   const params = useSearchParams();
 
   const [make, setMake] = useState(params.get("make") ?? "");
+  const [model, setModel] = useState(params.get("model") ?? "");
   const [minPrice, setMinPrice] = useState(params.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(params.get("maxPrice") ?? "");
   const [transmission, setTransmission] = useState(params.get("transmission") ?? "");
@@ -16,6 +17,7 @@ export default function SearchFilters() {
     e.preventDefault();
     const next = new URLSearchParams();
     if (make) next.set("make", make);
+    if (model) next.set("model", model);
     if (minPrice) next.set("minPrice", minPrice);
     if (maxPrice) next.set("maxPrice", maxPrice);
     if (transmission) next.set("transmission", transmission);
@@ -28,6 +30,12 @@ export default function SearchFilters() {
         placeholder="Make (e.g. Toyota)"
         value={make}
         onChange={(e) => setMake(e.target.value)}
+        className="border rounded px-3 py-2 flex-1 min-w-[140px]"
+      />
+      <input
+        placeholder="Model (e.g. Vitz)"
+        value={model}
+        onChange={(e) => setModel(e.target.value)}
         className="border rounded px-3 py-2 flex-1 min-w-[140px]"
       />
       <input

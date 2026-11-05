@@ -16,7 +16,7 @@ export default async function ConversationPage({ params }: Props) {
 
   const { data: conversation } = await supabase
     .from("conversations")
-    .select("*, listings(make, model, year)")
+    .select("*, listings(id, make, model, year, price, listing_images(url, sort_order))")
     .eq("id", params.id)
     .single();
 
@@ -25,13 +25,40 @@ export default async function ConversationPage({ params }: Props) {
     return notFound();
   }
 
+  // Who is on the other end of this chat
+  const otherId =
+    conversation.buyer_id === user.id ? conversation.seller_id : conversation.buyer_id;
+  const { data: otherProfile } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("id", otherId)
+    .maybeSingle();
+  const otherUser = {
+    id: otherId as string,
+    name: (otherProfile?.full_name as string | null) ?? null,
+  };
+
+  const l = conversation.listings;
+  const images = [...(l?.listing_images ?? [])].sort(
+    (a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order
+  );
+  const listing = l
+    ? {
+        id: l.id as string,
+        title: `${l.year} ${l.make} ${l.model}`,
+        price: (l.price as number | null) ?? null,
+        imageUrl: (images[0]?.url as string | undefined) ?? null,
+      }
+    : null;
+
   return (
     <main className="px-6 py-8 max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold mb-4">
-        {conversation.listings?.year} {conversation.listings?.make}{" "}
-        {conversation.listings?.model}
-      </h1>
-      <MessageThread conversationId={conversation.id} currentUserId={user.id} />
+      <MessageThread
+        conversationId={conversation.id}
+        currentUserId={user.id}
+        listing={listing}
+        otherUser={otherUser}
+      />
     </main>
   );
 }

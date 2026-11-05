@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ImageUploader from "@/components/ImageUploader";
+import { notifyServer } from "@/lib/push-client";
 
 export default function NewListingPage() {
   const router = useRouter();
@@ -62,6 +63,7 @@ export default function NewListingPage() {
 
     // Stay on the page so photos can be attached before heading back
     setCreatedListingId(inserted.id);
+    notifyServer({ type: "listing", listingId: inserted.id });
   }
 
   if (createdListingId) {

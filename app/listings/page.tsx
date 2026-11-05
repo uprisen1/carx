@@ -5,6 +5,7 @@ import SearchFilters from "@/components/SearchFilters";
 interface Props {
   searchParams: {
     make?: string;
+    model?: string;
     minPrice?: string;
     maxPrice?: string;
     transmission?: string;
@@ -20,6 +21,7 @@ export default async function ListingsPage({ searchParams }: Props) {
     .eq("status", "active");
 
   if (searchParams.make) query = query.ilike("make", `%${searchParams.make}%`);
+  if (searchParams.model) query = query.ilike("model", `%${searchParams.model}%`);
   if (searchParams.minPrice) query = query.gte("price", Number(searchParams.minPrice));
   if (searchParams.maxPrice) query = query.lte("price", Number(searchParams.maxPrice));
   if (searchParams.transmission) query = query.eq("transmission", searchParams.transmission);
