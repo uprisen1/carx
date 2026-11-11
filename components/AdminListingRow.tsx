@@ -20,7 +20,10 @@ export default function AdminListingRow({ listing }: Props) {
       .update({ status: next })
       .eq("id", listing.id);
     setBusy(false);
-    if (!error) setStatus(next);
+    if (!error) {
+      setStatus(next);
+      window.dispatchEvent(new Event("pending-changed"));
+    }
   }
 
   if (status !== "pending") {

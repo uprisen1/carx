@@ -16,13 +16,21 @@ function clip(text: string, max = 120) {
 // Makes sure each message / listing triggers at most ONE push, ever
 async function claim(admin: Admin, kind: string, refId: string) {
   const { error } = await admin.from("push_log").insert({ kind, ref_id: refId });
-  return !error;
+  if (!error) return "ok" as const;
+  if (error.code === "23505") return "duplicate" as const;
+  console.error("push_log insert failed:", error.message);
+  return "error" as const;
 }
 
 async function deliver(admin: Admin, subs: SubRow[], payload: PushPayload) {
-  if (subs.length === 0) return;
+  if (subs.length === 0) {
+    console.log("push: nobody to notify for", payload.tag);
+    return 0;
+  }
   const dead = await sendPush(subs, payload);
+  console.log("push sent:", payload.tag, "devices:", subs.length, "expired:", dead.length);
   if (dead.length) await admin.from("push_subscriptions").delete().in("endpoint", dead);
+  return subs.length;
 }
 
 async function notifyMessage(admin: Admin, userId: string, messageId: string) {
@@ -42,7 +50,8 @@ async function notifyMessage(admin: Admin, userId: string, messageId: string) {
     return ok({ skipped: "not in this conversation" });
   }
 
-  if (!(await claim(admin, "message", messageId))) return ok({ skipped: "already sent" });
+  const claimed = await claim(admin, "message", messageId);
+  if (claimed !== "ok") return ok({ skipped: claimed });
 
   const recipientId = convo.buyer_id === userId ? convo.seller_id : convo.buyer_id;
 
@@ -53,13 +62,13 @@ async function notifyMessage(admin: Admin, userId: string, messageId: string) {
   ]);
 
   const vehicle = listing ? `${listing.year} ${listing.make} ${listing.model}` : "your listing";
-  await deliver(admin, (subs ?? []) as SubRow[], {
+  const devices = await deliver(admin, (subs ?? []) as SubRow[], {
     title: sender?.full_name ?? "New message",
     body: `${vehicle}: ${clip(msg.body)}`,
     url: `/messages/${msg.conversation_id}`,
     tag: `conversation-${msg.conversation_id}`,
   });
-  return ok({ sent: true });
+  return ok({ sent: devices > 0, devices });
 }
 
 async function notifyListing(admin: Admin, userId: string, listingId: string) {
@@ -72,24 +81,25 @@ async function notifyListing(admin: Admin, userId: string, listingId: string) {
     return ok({ skipped: "nothing to approve" });
   }
 
-  if (!(await claim(admin, "listing", listingId))) return ok({ skipped: "already sent" });
+  const claimed = await claim(admin, "listing", listingId);
+  if (claimed !== "ok") return ok({ skipped: claimed });
 
   const { data: admins } = await admin.from("profiles").select("id").eq("is_admin", true);
   const adminIds = (admins ?? []).map((a: { id: string }) => a.id).filter((id: string) => id !== userId);
-  if (adminIds.length === 0) return ok({ skipped: "no admins" });
+  if (adminIds.length === 0) return ok({ skipped: "no other admins" });
 
   const { data: subs } = await admin
     .from("push_subscriptions")
     .select("endpoint, p256dh, auth")
     .in("user_id", adminIds);
 
-  await deliver(admin, (subs ?? []) as SubRow[], {
+  const devices = await deliver(admin, (subs ?? []) as SubRow[], {
     title: "New listing awaiting approval",
     body: `${listing.year} ${listing.make} ${listing.model} · KES ${Number(listing.price).toLocaleString()}`,
     url: "/admin",
     tag: `listing-${listing.id}`,
   });
-  return ok({ sent: true });
+  return ok({ sent: devices > 0, devices });
 }
 
 export async function POST(request: Request) {

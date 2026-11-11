@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
 import MessagesLink from "@/components/MessagesLink";
 import PushToggle from "@/components/PushToggle";
+import AdminLink from "@/components/AdminLink";
 
 export default async function Navbar() {
   const supabase = createClient();
@@ -36,11 +37,7 @@ export default async function Navbar() {
                 Dashboard
               </Link>
               <MessagesLink />
-              {isAdmin && (
-                <Link href="/admin" className="text-gray-600 hover:text-black">
-                  Admin
-                </Link>
-              )}
+              {isAdmin && <AdminLink />}
               <PushToggle />
               <LogoutButton />
             </>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-type State = "hidden" | "off" | "on" | "blocked" | "install" | "busy";
+type State = "hidden" | "off" | "on" | "blocked" | "install" | "unsupported" | "busy";
 
 function keyToBytes(base64: string) {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -37,7 +37,7 @@ export default function PushToggle() {
 
     if (!supported) {
       // iPhones only allow notifications once the site is added to the home screen
-      setState(isIos && !standalone ? "install" : "hidden");
+      setState(isIos && !standalone ? "install" : "unsupported");
       return;
     }
     if (Notification.permission === "denied") {
@@ -125,6 +125,21 @@ export default function PushToggle() {
         }
       >
         🚫 Alerts
+      </button>
+    );
+  }
+
+  if (state === "unsupported") {
+    return (
+      <button
+        className={common}
+        onClick={() =>
+          alert(
+            "This browser can't show notifications. Open the site in Chrome itself (not inside WhatsApp, Instagram or another app's built-in browser)."
+          )
+        }
+      >
+        ⚠ Alerts
       </button>
     );
   }
