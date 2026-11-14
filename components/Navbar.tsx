@@ -2,7 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
 import MessagesLink from "@/components/MessagesLink";
-import PushToggle from "@/components/PushToggle";
 import AdminLink from "@/components/AdminLink";
 
 export default async function Navbar() {
@@ -38,7 +37,6 @@ export default async function Navbar() {
               </Link>
               <MessagesLink />
               {isAdmin && <AdminLink />}
-              <PushToggle />
               <LogoutButton />
             </>
           ) : (

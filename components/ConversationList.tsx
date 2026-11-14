@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePresence } from "@/components/PresenceProvider";
+import NotificationToggle from "@/components/NotificationToggle";
 
 interface Row {
   id: string;
@@ -125,6 +126,8 @@ export default function ConversationList({ userId }: { userId: string }) {
         {rows.length} conversation{rows.length === 1 ? "" : "s"}
         {totalUnread > 0 && ` · ${totalUnread} unread`}
       </p>
+
+      <NotificationToggle />
 
       {loading && <p className="text-sm text-gray-500">Loading…</p>}
       {!loading && rows.length === 0 && (
