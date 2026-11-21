@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -14,22 +14,33 @@ export type PushState =
   | "on"
   | "busy";
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 interface PushValue {
   state: PushState;
   canPrompt: boolean; // browser has never been asked, so a popup makes sense
+  canInstall: boolean; // the browser can install the site as an app right now
   isAdmin: boolean;
   userId: string | null;
   enable: () => Promise<void>;
   disable: () => Promise<void>;
+  install: () => Promise<void>;
+  recheck: () => void;
 }
 
 const PushContext = createContext<PushValue>({
   state: "unavailable",
   canPrompt: false,
+  canInstall: false,
   isAdmin: false,
   userId: null,
   enable: async () => {},
   disable: async () => {},
+  install: async () => {},
+  recheck: () => {},
 });
 
 export const usePush = () => useContext(PushContext);
@@ -95,10 +106,34 @@ export default function PushProvider({
 }) {
   const [state, setState] = useState<PushState>("loading");
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
+  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const busyRef = useRef(false);
+  const stateRef = useRef<PushState>("loading");
+  const evaluateRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  // Android Chrome lets a site offer a one-tap "install as app"
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallEvent(e as BeforeInstallPromptEvent);
+    };
+    const onInstalled = () => setInstallEvent(null);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
 
   useEffect(() => {
     if (!userId || !PUBLIC_KEY) {
       setState("unavailable");
+      evaluateRef.current = null;
       return;
     }
     const uid: string = userId;
@@ -112,18 +147,17 @@ export default function PushProvider({
     const supported =
       "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 
-    if (!supported) {
-      setState(isIos && !standalone ? "install" : "unsupported");
-      return;
-    }
-
-    setPermission(Notification.permission);
-    if (Notification.permission === "denied") {
-      setState("blocked");
-      return;
-    }
-
-    (async () => {
+    const evaluate = async () => {
+      if (busyRef.current) return;
+      if (!supported) {
+        if (!cancelled) setState(isIos && !standalone ? "install" : "unsupported");
+        return;
+      }
+      setPermission(Notification.permission);
+      if (Notification.permission === "denied") {
+        if (!cancelled) setState("blocked");
+        return;
+      }
       try {
         if (Notification.permission === "granted") {
           // Already allowed on this device. Unless they switched it off on purpose,
@@ -133,22 +167,38 @@ export default function PushProvider({
             return;
           }
           const ok = await subscribeThisDevice(key);
-          if (!cancelled) setState(ok ? "on" : "off");
+          if (!cancelled && !busyRef.current) setState(ok ? "on" : "off");
         } else if (!cancelled) {
           setState("off");
         }
       } catch {
-        if (!cancelled) setState("off");
+        if (!cancelled && !busyRef.current) setState("off");
       }
-    })();
+    };
+
+    evaluateRef.current = evaluate;
+    evaluate();
+
+    // When someone comes back from changing the phone's settings, pick up the change
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const s = stateRef.current;
+      if (s === "blocked" || s === "off") evaluate();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
 
     return () => {
       cancelled = true;
+      evaluateRef.current = null;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, [userId]);
 
   const enable = useCallback(async () => {
     if (!userId || !PUBLIC_KEY) return;
+    busyRef.current = true;
     setState("busy");
     try {
       const result = await Notification.requestPermission();
@@ -162,11 +212,14 @@ export default function PushProvider({
       setState(ok ? "on" : "off");
     } catch {
       setState("off");
+    } finally {
+      busyRef.current = false;
     }
   }, [userId]);
 
   const disable = useCallback(async () => {
     if (!userId) return;
+    busyRef.current = true;
     setState("busy");
     try {
       const reg = await navigator.serviceWorker.getRegistration();
@@ -182,13 +235,37 @@ export default function PushProvider({
       writeFlag(offKey(userId), "1");
     } finally {
       setState("off");
+      busyRef.current = false;
     }
   }, [userId]);
+
+  const install = useCallback(async () => {
+    if (!installEvent) return;
+    await installEvent.prompt();
+    await installEvent.userChoice;
+    setInstallEvent(null);
+  }, [installEvent]);
+
+  const recheck = useCallback(() => {
+    evaluateRef.current?.();
+  }, []);
 
   const canPrompt = state === "off" && permission === "default";
 
   return (
-    <PushContext.Provider value={{ state, canPrompt, isAdmin, userId, enable, disable }}>
+    <PushContext.Provider
+      value={{
+        state,
+        canPrompt,
+        canInstall: installEvent !== null,
+        isAdmin,
+        userId,
+        enable,
+        disable,
+        install,
+        recheck,
+      }}
+    >
       {children}
     </PushContext.Provider>
   );

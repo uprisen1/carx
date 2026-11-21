@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { pushConfigured, sendPush, type PushPayload, type SubRow } from "@/lib/push";
+import { pushConfigured, sendPushDetailed, type PushPayload, type SubRow } from "@/lib/push";
 
 export const runtime = "nodejs";
 
@@ -27,10 +27,11 @@ async function deliver(admin: Admin, subs: SubRow[], payload: PushPayload) {
     console.log("push: nobody to notify for", payload.tag);
     return 0;
   }
-  const dead = await sendPush(subs, payload);
-  console.log("push sent:", payload.tag, "devices:", subs.length, "expired:", dead.length);
-  if (dead.length) await admin.from("push_subscriptions").delete().in("endpoint", dead);
-  return subs.length;
+  const result = await sendPushDetailed(subs, payload);
+  console.log("push:", payload.tag, "delivered:", result.sent, "of", subs.length, "expired:", result.dead.length);
+  if (result.errors.length) console.error("push errors:", result.errors.join(" | "));
+  if (result.dead.length) await admin.from("push_subscriptions").delete().in("endpoint", result.dead);
+  return result.sent;
 }
 
 async function notifyMessage(admin: Admin, userId: string, messageId: string) {

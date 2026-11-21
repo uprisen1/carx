@@ -19,12 +19,20 @@ export function pushConfigured() {
   );
 }
 
-// Sends one notification to each device. Returns the endpoints that no
-// longer exist (uninstalled / permission revoked) so they can be cleaned up.
-export async function sendPush(subs: SubRow[], payload: PushPayload) {
+// Sends one notification to each device and reports what happened:
+//  sent   - how many devices accepted it
+//  dead   - endpoints that no longer exist (uninstalled / permission revoked)
+//  errors - any other failure, with the push service's reason
+export async function sendPushDetailed(subs: SubRow[], payload: PushPayload) {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  if (!publicKey || !privateKey) return [] as string[];
+  const dead: string[] = [];
+  const errors: string[] = [];
+  let sent = 0;
+
+  if (!publicKey || !privateKey) {
+    return { sent, dead, errors: ["Notification keys are missing on the server"] };
+  }
 
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
@@ -32,7 +40,6 @@ export async function sendPush(subs: SubRow[], payload: PushPayload) {
     privateKey
   );
 
-  const dead: string[] = [];
   await Promise.all(
     subs.map(async (s) => {
       try {
@@ -41,11 +48,23 @@ export async function sendPush(subs: SubRow[], payload: PushPayload) {
           JSON.stringify(payload),
           { TTL: 60 * 60 * 24, urgency: "high" }
         );
+        sent += 1;
       } catch (err) {
-        const code = (err as { statusCode?: number }).statusCode;
-        if (code === 404 || code === 410) dead.push(s.endpoint);
+        const e = err as { statusCode?: number; body?: string; message?: string };
+        if (e.statusCode === 404 || e.statusCode === 410) {
+          dead.push(s.endpoint);
+        } else {
+          errors.push(`${e.statusCode ?? ""} ${e.body ?? e.message ?? "failed"}`.trim());
+        }
       }
     })
   );
-  return dead;
+
+  return { sent, dead, errors };
+}
+
+// Older helper kept for compatibility: returns only the dead endpoints
+export async function sendPush(subs: SubRow[], payload: PushPayload) {
+  const result = await sendPushDetailed(subs, payload);
+  return result.dead;
 }
