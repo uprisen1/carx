@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import GoogleButton from "@/components/GoogleButton";
 import type { Role } from "@/lib/supabase/types";
 
 export default function SignupPage() {
@@ -95,6 +96,13 @@ export default function SignupPage() {
           Sign up
         </button>
       </form>
+
+      <div className="my-4 flex items-center gap-3 text-xs text-gray-400">
+        <span className="h-px flex-1 bg-gray-200" />
+        or
+        <span className="h-px flex-1 bg-gray-200" />
+      </div>
+      <GoogleButton label={`Sign up with Google as ${role.replace("_", " ")}`} role={role} />
     </main>
   );
 }

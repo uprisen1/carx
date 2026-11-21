@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import GoogleButton from "@/components/GoogleButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +12,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Shown when Google or an email link couldn't finish signing the person in
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("error")) {
+      setError("We couldn't finish signing you in. Please log in below or try again.");
+    }
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +57,14 @@ export default function LoginPage() {
           Log in
         </button>
       </form>
+
+      <div className="my-4 flex items-center gap-3 text-xs text-gray-400">
+        <span className="h-px flex-1 bg-gray-200" />
+        or
+        <span className="h-px flex-1 bg-gray-200" />
+      </div>
+      <GoogleButton label="Continue with Google" />
+
       <p className="text-sm text-gray-500 mt-4">
         No account?{" "}
         <Link href="/auth/signup" className="underline">
