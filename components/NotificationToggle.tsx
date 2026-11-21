@@ -12,7 +12,7 @@ function platform() {
 }
 
 export default function NotificationToggle() {
-  const { state, enable, disable, isAdmin, canInstall, install, recheck } = usePush();
+  const { state, enable, disable, isAdmin, recheck } = usePush();
   const [testing, setTesting] = useState(false);
   const [testMsg, setTestMsg] = useState<string | null>(null);
 
@@ -51,30 +51,18 @@ export default function NotificationToggle() {
         {p === "android" && (
           <div className="mt-3 space-y-3 text-sm text-gray-700">
             <div>
-              <p className="font-medium">Easiest: no address bar needed</p>
-              {canInstall ? (
-                <button
-                  type="button"
-                  onClick={install}
-                  className="mt-2 w-full rounded-lg bg-black py-3 text-white"
-                >
-                  📲 Install the app
-                </button>
-              ) : (
-                <p className="mt-1">
-                  Open Chrome's ⋮ menu and tap <b>Add to Home screen</b> (or <b>Install app</b>).
-                </p>
-              )}
-              <p className="mt-2">
-                Then press and hold the new <b>Gari Yangu</b> icon on your home screen → tap{" "}
-                <b>Site settings</b> → <b>Notifications</b> → <b>Allow</b>.
+              <p className="font-medium">1. In Chrome (one time only)</p>
+              <p className="mt-1">
+                Tap the ⋮ menu → <b>Settings</b> → <b>Site settings</b> → <b>Notifications</b>.
+                Make sure the top switch is <b>on</b>, then find <b>{host}</b> in the Blocked list
+                and set it to <b>Allow</b>.
               </p>
             </div>
             <div>
-              <p className="font-medium">Or inside Chrome</p>
+              <p className="font-medium">2. Or use a different browser</p>
               <p className="mt-1">
-                ⋮ menu → <b>Settings</b> → <b>Site settings</b> → <b>Notifications</b> → find{" "}
-                <b>{host}</b> → <b>Allow</b>.
+                Open this site in Samsung Internet, Firefox or Edge on your phone. It asks right
+                away. Just tap <b>Allow</b>.
               </p>
             </div>
           </div>
